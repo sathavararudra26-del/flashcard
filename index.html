@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studypod - Premium Flashcards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #0f172a;
+            --easy-color: #dcfce7;
+            --medium-color: #fef9c3;
+            --hard-color: #fee2e2;
+            --accent: #6366f1;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* UI Elements */
+        .cartoon-card {
+            background: white;
+            border: 3px solid var(--border-color);
+            border-radius: 24px;
+            box-shadow: 6px 6px 0px var(--border-color);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cartoon-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px var(--border-color);
+        }
+
+        .cartoon-btn {
+            border: 3px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 4px 4px 0px var(--border-color);
+            font-weight: 700;
+            transition: all 0.1s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .cartoon-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px var(--border-color);
+        }
+
+        .cartoon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: 4px 4px 0px var(--border-color) !important;
+        }
+
+        /* Navigation */
+        nav {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Flashcard Flip */
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            max-width: 400px;
+            height: 320px;
+            margin: 0 auto;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            border: 3px solid var(--border-color);
+            border-radius: 32px;
+            box-shadow: 8px 8px 0px var(--border-color);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: #fcfcfc;
+        }
+
+        /* Progress Ring */
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent) var(--p), #e2e8f0 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--border-color);
+            margin: 0 auto;
+        }
+
+        .progress-ring-inner {
+            width: 90px;
+            height: 90px;
+            background: white;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .hidden { display: none; }
+
+        .diff-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="text-2xl font-bold cursor-pointer" onclick="showView('home')">
+            <span class="text-indigo-500">Study</span>pod
+        </div>
+        <div class="flex gap-4">
+            <button class="font-semibold text-gray-500 hover:text-black" onclick="showView('stats')">Stats</button>
+            <button class="font-semibold text-gray-500 hover:text-black" onclick="showView('folders')">Library</button>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-2xl mx-auto w-full p-6">
+        
+        <!-- HOME VIEW -->
+        <section id="view-home" class="view">
+            <div class="cartoon-card p-10 text-center mb-8">
+                <h1 class="text-2xl font-bold mb-6">Welcome Back!</h1>
+                <div class="progress-ring mb-6" id="home-progress-ring" style="--p: 0deg;">
+                    <div class="progress-ring-inner" id="due-count">0</div>
+                </div>
+                <p class="text-gray-500 mb-8 font-medium">Cards waiting for you today</p>
+                <button id="btn-start" class="cartoon-btn bg-indigo-500 text-white w-full py-4 text-xl" onclick="startGlobalSession(true)">
+                    Start Daily Reviews
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="cartoon-card p-4 text-center bg-green-50">
+                    <div id="stat-easy" class="font-bold">0</div>
+                    <div class="text-[10px] uppercase font-bold text-green-600">Easy</div>
+                </div>
+                <div class="cartoon-card p-4 text-center bg-yellow-50">
+                    <div id="stat-medium" class="font-bold">0</div>
+                    <div class="text-[10px] uppercase font-bold text-yellow-600">Medium</div>
+                </div>
+                <div class="cartoon-card p-4 text-center bg-red-50">
+                    <div id="stat-hard" class="font-bold">0</div>
+                    <div class="text-[10px] uppercase font-bold text-red-600">Hard</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOLDERS VIEW -->
+        <section id="view-folders" class="view hidden">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-bold">Your Library</h2>
+                <button class="cartoon-btn bg-white text-sm py-2 px-4" onclick="promptCreateFolder()">+ New Folder</button>
+            </div>
+            <div id="folder-list" class="space-y-6">
+                <!-- Folders injected here -->
+            </div>
+        </section>
+
+        <!-- SUBFOLDER / CARD LIST VIEW -->
+        <section id="view-subfolder" class="view hidden">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <button class="cartoon-btn p-2 w-10 h-10" onclick="showView('folders')">←</button>
+                    <h2 id="current-subfolder-name" class="text-2xl font-bold">Subfolder</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button class="cartoon-btn bg-indigo-500 text-white text-xs px-3 py-2" id="btn-review-sub-all">Review All</button>
+                    <button class="cartoon-btn bg-red-50 text-red-500 text-xs px-3 py-2" id="btn-delete-sub">Delete</button>
+                </div>
+            </div>
+            <button class="cartoon-btn w-full mb-6 bg-indigo-50" onclick="promptCreateCard()">+ Add New Card</button>
+            <div id="card-list" class="space-y-3">
+                <!-- Cards injected here -->
+            </div>
+        </section>
+
+        <!-- REVIEW VIEW -->
+        <section id="view-review" class="view hidden">
+            <div class="flex justify-between items-center mb-6">
+                <button class="cartoon-btn text-xs py-1 px-3" onclick="showView('home')">Quit</button>
+                <div class="text-center flex flex-col items-center">
+                    <span id="session-title" class="text-[10px] uppercase font-black text-indigo-400">All Folders</span>
+                    <div class="font-bold text-gray-400" id="review-progress">1 / 5</div>
+                </div>
+            </div>
+
+            <div class="card-container mb-10" id="card-element" onclick="flipCard()">
+                <div class="card-inner">
+                    <div class="card-face card-front bg-white">
+                        <p id="card-front-text">Front</p>
+                    </div>
+                    <div class="card-face card-back">
+                        <p id="card-back-text">Back</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="review-controls" class="hidden grid grid-cols-3 gap-4">
+                <button class="cartoon-btn bg-red-100 hover:bg-red-200" onclick="handleReview('hard')">
+                    <span class="text-lg">Hard</span>
+                    <span class="text-[10px] opacity-60 font-bold">3 days</span>
+                </button>
+                <button class="cartoon-btn bg-yellow-100 hover:bg-yellow-200" onclick="handleReview('medium')">
+                    <span class="text-lg">Medium</span>
+                    <span class="text-[10px] opacity-60 font-bold">5 days</span>
+                </button>
+                <button class="cartoon-btn bg-green-100 hover:bg-green-200" onclick="handleReview('easy')">
+                    <span class="text-lg">Easy</span>
+                    <span class="text-[10px] opacity-60 font-bold">7 days</span>
+                </button>
+            </div>
+            <p id="tap-hint" class="text-center text-gray-400 animate-pulse font-bold mt-4">Tap to reveal answer</p>
+        </section>
+
+        <!-- STATS / DIFFICULTY SORTING VIEW -->
+        <section id="view-stats" class="view hidden">
+            <h2 class="text-2xl font-bold mb-6">Learning Progress</h2>
+            <div class="space-y-4" id="stats-distribution">
+                <!-- Distributed view -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-container" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="cartoon-card bg-white w-full max-w-md p-8">
+            <h3 id="modal-title" class="text-xl font-bold mb-6">Action</h3>
+            <div id="modal-content" class="space-y-4"></div>
+            <div class="flex justify-end gap-3 mt-8">
+                <button class="font-bold text-gray-400 px-4" onclick="closeModal()">Cancel</button>
+                <button id="modal-confirm" class="cartoon-btn bg-indigo-500 text-white px-6">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /** MOCK BACKEND / DATA LAYER **/
+        const STORAGE_KEY = 'studypod_v3_data';
+        
+        const API = {
+            async get() {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                return stored ? JSON.parse(stored) : { folders: [] };
+            },
+            async save(data) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                await initApp();
+            },
+            async addFolder(name) {
+                const data = await this.get();
+                data.folders.push({ id: crypto.randomUUID(), name, subfolders: [] });
+                await this.save(data);
+            },
+            async editFolder(id, name) {
+                const data = await this.get();
+                const folder = data.folders.find(f => f.id === id);
+                if (folder) folder.name = name;
+                await this.save(data);
+            },
+            async deleteFolder(id) {
+                const data = await this.get();
+                data.folders = data.folders.filter(f => f.id !== id);
+                await this.save(data);
+            },
+            async addSubfolder(folderId, name) {
+                const data = await this.get();
+                const folder = data.folders.find(f => f.id === folderId);
+                if (folder) folder.subfolders.push({ id: crypto.randomUUID(), name, cards: [] });
+                await this.save(data);
+            },
+            async deleteSubfolder(fId, sId) {
+                const data = await this.get();
+                const folder = data.folders.find(f => f.id === fId);
+                if (folder) folder.subfolders = folder.subfolders.filter(s => s.id !== sId);
+                await this.save(data);
+            },
+            async addCard(fId, sfId, front, back) {
+                const data = await this.get();
+                const sub = data.folders.find(f => f.id === fId)?.subfolders.find(s => s.id === sfId);
+                if (sub) {
+                    sub.cards.push({
+                        id: crypto.randomUUID(),
+                        front, back,
+                        difficulty: 'medium',
+                        lastReviewed: new Date().toISOString().split('T')[0],
+                        nextReview: new Date().toISOString().split('T')[0]
+                    });
+                }
+                await this.save(data);
+            },
+            async editCard(fId, sfId, cId, front, back) {
+                const data = await this.get();
+                const sub = data.folders.find(f => f.id === fId)?.subfolders.find(s => s.id === sfId);
+                const card = sub?.cards.find(c => c.id === cId);
+                if (card) { card.front = front; card.back = back; }
+                await this.save(data);
+            },
+            async deleteCard(fId, sfId, cId) {
+                const data = await this.get();
+                const sub = data.folders.find(f => f.id === fId)?.subfolders.find(s => s.id === sfId);
+                if (sub) sub.cards = sub.cards.filter(c => c.id !== cId);
+                await this.save(data);
+            },
+            async updateReview(cardId, difficulty) {
+                const data = await this.get();
+                const intervals = { hard: 3, medium: 5, easy: 7 };
+                const today = new Date();
+                const nextDate = new Date();
+                nextDate.setDate(today.getDate() + intervals[difficulty]);
+
+                data.folders.forEach(f => f.subfolders.forEach(s => {
+                    const card = s.cards.find(c => c.id === cardId);
+                    if (card) {
+                        card.difficulty = difficulty;
+                        card.lastReviewed = today.toISOString().split('T')[0];
+                        card.nextReview = nextDate.toISOString().split('T')[0];
+                    }
+                }));
+                await this.save(data);
+            }
+        };
+
+        let appState = {
+            data: null,
+            activeView: 'home',
+            session: [],
+            sessionIndex: 0,
+            sessionTitle: 'All Folders',
+            activeFolderId: null,
+            activeSubfolderId: null
+        };
+
+        async function initApp() {
+            appState.data = await API.get();
+            renderHome();
+            renderFolders();
+            renderStats();
+            if (appState.activeSubfolderId) renderSubfolder(appState.activeSubfolderId);
+        }
+
+        function showView(view) {
+            appState.activeView = view;
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+        }
+
+        function renderHome() {
+            const today = new Date().toISOString().split('T')[0];
+            let due = 0;
+            let counts = { easy: 0, medium: 0, hard: 0 };
+            appState.data.folders.forEach(f => f.subfolders.forEach(s => {
+                s.cards.forEach(c => {
+                    if (c.nextReview <= today) due++;
+                    counts[c.difficulty]++;
+                });
+            }));
+            document.getElementById('due-count').innerText = due;
+            document.getElementById('stat-easy').innerText = counts.easy;
+            document.getElementById('stat-medium').innerText = counts.medium;
+            document.getElementById('stat-hard').innerText = counts.hard;
+            const total = counts.easy + counts.medium + counts.hard;
+            document.getElementById('home-progress-ring').style.setProperty('--p', `${total === 0 ? 0 : (due / total) * 360}deg`);
+        }
+
+        function renderFolders() {
+            const container = document.getElementById('folder-list');
+            container.innerHTML = '';
+            const today = new Date().toISOString().split('T')[0];
+
+            appState.data.folders.forEach(folder => {
+                const el = document.createElement('div');
+                el.className = 'cartoon-card overflow-hidden';
+                let totalFolderCards = 0;
+                let folderDue = 0;
+                
+                const subsHtml = folder.subfolders.map(sf => {
+                    const due = sf.cards.filter(c => c.nextReview <= today).length;
+                    folderDue += due;
+                    totalFolderCards += sf.cards.length;
+                    return `
+                        <div class="p-4 border-t-2 border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-50" onclick="openSubfolder('${folder.id}', '${sf.id}')">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">📁</span>
+                                <div>
+                                    <div class="font-bold">${sf.name}</div>
+                                    <div class="text-[10px] text-gray-400 uppercase font-black">${sf.cards.length} Cards</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${due > 0 ? `<div class="bg-indigo-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold">${due} Due</div>` : ''}
+                                <span class="text-xs text-gray-300">→</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                el.innerHTML = `
+                    <div class="bg-indigo-50 p-4 flex justify-between items-center border-b-2 border-slate-100">
+                        <div>
+                            <span class="font-bold text-lg">${folder.name}</span>
+                            <div class="flex gap-2 mt-1">
+                                <button class="text-[9px] uppercase font-bold text-indigo-400 hover:underline" onclick="event.stopPropagation(); promptEditFolder('${folder.id}', '${folder.name}')">Rename</button>
+                                <button class="text-[9px] uppercase font-bold text-red-400 hover:underline" onclick="event.stopPropagation(); promptDeleteFolder('${folder.id}')">Delete</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                             <button class="text-[10px] font-black bg-indigo-500 text-white uppercase px-2 py-1 rounded-lg shadow-sm disabled:opacity-30" 
+                                     onclick="startFolderSession('${folder.id}', false)" 
+                                     ${totalFolderCards === 0 ? 'disabled' : ''}>
+                                Review All
+                             </button>
+                             <button class="text-xs font-black text-indigo-400 uppercase" onclick="promptCreateSubfolder('${folder.id}')">+ Sub</button>
+                        </div>
+                    </div>
+                    <div>${subsHtml || '<div class="p-4 text-xs text-gray-400 italic">No subfolders yet</div>'}</div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function openSubfolder(fId, sId) {
+            appState.activeFolderId = fId;
+            appState.activeSubfolderId = sId;
+            renderSubfolder(sId);
+            showView('subfolder');
+        }
+
+        function renderSubfolder(sId) {
+            const fId = appState.activeFolderId;
+            const sub = appState.data.folders.find(f => f.id === fId)?.subfolders.find(s => s.id === sId);
+            if (!sub) return;
+            document.getElementById('current-subfolder-name').innerText = sub.name;
+            
+            document.getElementById('btn-delete-sub').onclick = () => promptDeleteSubfolder(fId, sId);
+            document.getElementById('btn-review-sub-all').onclick = () => startSubfolderSession(fId, sId);
+            document.getElementById('btn-review-sub-all').disabled = sub.cards.length === 0;
+
+            const list = document.getElementById('card-list');
+            list.innerHTML = '';
+            sub.cards.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'cartoon-card p-4 flex justify-between items-center bg-white';
+                el.innerHTML = `
+                    <div class="flex-1">
+                        <span class="font-medium">${c.front}</span>
+                        <div class="flex gap-2 mt-1">
+                            <button class="text-[9px] uppercase font-bold text-gray-400 hover:text-black" onclick="promptEditCard('${c.id}', '${c.front}', '${c.back}')">Edit</button>
+                            <button class="text-[9px] uppercase font-bold text-red-400 hover:text-red-600" onclick="promptDeleteCard('${c.id}')">Delete</button>
+                        </div>
+                    </div>
+                    <div class="diff-dot ${c.difficulty === 'easy' ? 'bg-green-500' : c.difficulty === 'medium' ? 'bg-yellow-400' : 'bg-red-500'}"></div>
+                `;
+                list.appendChild(el);
+            });
+        }
+
+        /** SESSION LOGIC **/
+        function startGlobalSession(dueOnly = true) {
+            const today = new Date().toISOString().split('T')[0];
+            appState.session = [];
+            appState.sessionTitle = dueOnly ? 'Daily Review' : 'Practice All';
+            appState.data.folders.forEach(f => f.subfolders.forEach(s => {
+                appState.session.push(...(dueOnly ? s.cards.filter(c => c.nextReview <= today) : s.cards));
+            }));
+            initSession();
+        }
+
+        function startFolderSession(folderId, dueOnly = false) {
+            const today = new Date().toISOString().split('T')[0];
+            const folder = appState.data.folders.find(f => f.id === folderId);
+            appState.session = [];
+            appState.sessionTitle = folder.name;
+            folder.subfolders.forEach(s => {
+                appState.session.push(...(dueOnly ? s.cards.filter(c => c.nextReview <= today) : s.cards));
+            });
+            initSession();
+        }
+
+        function startSubfolderSession(fId, sId) {
+            const sub = appState.data.folders.find(f => f.id === fId)?.subfolders.find(s => s.id === sId);
+            appState.session = [...sub.cards];
+            appState.sessionTitle = sub.name;
+            initSession();
+        }
+
+        function initSession() {
+            if (appState.session.length) {
+                appState.sessionIndex = 0;
+                document.getElementById('session-title').innerText = appState.sessionTitle;
+                showView('review');
+                loadCard();
+            }
+        }
+
+        function loadCard() {
+            const card = appState.session[appState.sessionIndex];
+            document.getElementById('review-progress').innerText = `${appState.sessionIndex + 1} / ${appState.session.length}`;
+            document.getElementById('card-front-text').innerText = card.front;
+            document.getElementById('card-back-text').innerText = card.back;
+            document.getElementById('card-element').classList.remove('flipped');
+            document.getElementById('review-controls').classList.add('hidden');
+            document.getElementById('tap-hint').classList.remove('hidden');
+        }
+
+        function flipCard() {
+            document.getElementById('card-element').classList.add('flipped');
+            document.getElementById('review-controls').classList.remove('hidden');
+            document.getElementById('tap-hint').classList.add('hidden');
+        }
+
+        async function handleReview(diff) {
+            const card = appState.session[appState.sessionIndex];
+            await API.updateReview(card.id, diff);
+            appState.sessionIndex++;
+            if (appState.sessionIndex < appState.session.length) loadCard();
+            else showView('home');
+        }
+
+        /** MODALS & PROMPTS **/
+        function openModal(title, content, onSave) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-content').innerHTML = content;
+            document.getElementById('modal-confirm').onclick = () => { onSave(); closeModal(); };
+            document.getElementById('modal-container').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('modal-container').classList.add('hidden'); }
+
+        function promptCreateFolder() {
+            openModal('New Folder', `<input type="text" id="ipt-f" class="cartoon-card w-full p-3 outline-none" placeholder="Folder Name">`, () => {
+                const v = document.getElementById('ipt-f').value;
+                if (v) API.addFolder(v);
+            });
+        }
+        function promptEditFolder(id, oldName) {
+            openModal('Rename Folder', `<input type="text" id="ipt-f" class="cartoon-card w-full p-3 outline-none" value="${oldName}">`, () => {
+                const v = document.getElementById('ipt-f').value;
+                if (v) API.editFolder(id, v);
+            });
+        }
+        function promptDeleteFolder(id) {
+            openModal('Delete Folder?', `<p class="text-sm text-gray-500">This will delete all subfolders and cards within this folder forever.</p>`, () => API.deleteFolder(id));
+        }
+        function promptCreateSubfolder(fId) {
+            openModal('New Subfolder', `<input type="text" id="ipt-sf" class="cartoon-card w-full p-3 outline-none" placeholder="Subfolder Name">`, () => {
+                const v = document.getElementById('ipt-sf').value;
+                if (v) API.addSubfolder(fId, v);
+            });
+        }
+        function promptDeleteSubfolder(fId, sId) {
+            openModal('Delete Subfolder?', `<p class="text-sm text-gray-500">All cards in this subfolder will be lost.</p>`, () => {
+                API.deleteSubfolder(fId, sId);
+                showView('folders');
+            });
+        }
+        function promptCreateCard() {
+            openModal('New Card', `
+                <textarea id="ipt-c-f" class="cartoon-card w-full p-3 h-24 outline-none" placeholder="Question"></textarea>
+                <textarea id="ipt-c-b" class="cartoon-card w-full p-3 h-24 outline-none mt-2" placeholder="Answer"></textarea>
+            `, () => {
+                const f = document.getElementById('ipt-c-f').value, b = document.getElementById('ipt-c-b').value;
+                if (f && b) API.addCard(appState.activeFolderId, appState.activeSubfolderId, f, b);
+            });
+        }
+        function promptEditCard(cId, oldF, oldB) {
+            openModal('Edit Card', `
+                <textarea id="ipt-c-f" class="cartoon-card w-full p-3 h-24 outline-none">${oldF}</textarea>
+                <textarea id="ipt-c-b" class="cartoon-card w-full p-3 h-24 outline-none mt-2">${oldB}</textarea>
+            `, () => {
+                const f = document.getElementById('ipt-c-f').value, b = document.getElementById('ipt-c-b').value;
+                if (f && b) API.editCard(appState.activeFolderId, appState.activeSubfolderId, cId, f, b);
+            });
+        }
+        function promptDeleteCard(cId) {
+            openModal('Delete Card?', `<p class="text-sm text-gray-500">Are you sure you want to remove this card?</p>`, () => API.deleteCard(appState.activeFolderId, appState.activeSubfolderId, cId));
+        }
+
+        function renderStats() {
+            const container = document.getElementById('stats-distribution');
+            container.innerHTML = '';
+            const diffs = ['hard', 'medium', 'easy'];
+            const colors = { hard: 'bg-red-500', medium: 'bg-yellow-400', easy: 'bg-green-500' };
+            diffs.forEach(d => {
+                let list = [];
+                appState.data.folders.forEach(f => f.subfolders.forEach(s => list.push(...s.cards.filter(c => c.difficulty === d))));
+                const section = document.createElement('div');
+                section.className = 'cartoon-card p-4';
+                section.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2">
+                            <div class="diff-dot ${colors[d]}"></div>
+                            <span class="font-bold capitalize">${d} Cards</span>
+                        </div>
+                        <span class="text-sm font-bold opacity-30">${list.length}</span>
+                    </div>
+                    <div class="space-y-2">
+                        ${list.length ? list.map(c => `<div class="text-sm p-2 bg-slate-50 rounded-lg border border-slate-100">${c.front}</div>`).join('') : '<div class="text-xs text-gray-300 italic">Empty</div>'}
+                    </div>
+                `;
+                container.appendChild(section);
+            });
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
